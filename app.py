@@ -25,7 +25,7 @@ def classify_income(gdp):
         return None
     if gdp >= 13000:
         return "High Income"
-    elif gdp >= 4000:
+    elif gdp >= 5000:
         return "Upper-Middle Income"
     elif gdp >= 1025:
         return "Lower-Middle Income"
@@ -124,7 +124,7 @@ def fig_bubble(d: pd.DataFrame):
         dragmode="lasso",
         legend_traceorder="normal"
     )
-    fig = lock_height(fig, 720)
+    fig = lock_height(fig, 600)
     return fig
 
 
