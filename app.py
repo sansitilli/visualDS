@@ -124,7 +124,7 @@ def fig_bubble(d: pd.DataFrame):
         dragmode="lasso",
         legend_traceorder="normal"
     )
-    fig = lock_height(fig, 560)
+    fig = lock_height(fig, 720)
     return fig
 
 

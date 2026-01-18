@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for visualds-nameless-water-6622 on 2026-01-18T21:29:55+01:00
+# fly.toml app configuration file generated for visualds-patient-dream-4756 on 2026-01-18T21:45:42+01:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'visualds-nameless-water-6622'
+app = 'visualds-patient-dream-4756'
 primary_region = 'fra'
 
 [build]
