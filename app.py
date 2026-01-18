@@ -271,9 +271,9 @@ app.layout = html.Div(
                     dcc.Dropdown(
                         id="xvar",
                         options=[
-                            {"label": "Female labour participation", "value": "female_lfp"},
                             {"label": "Unpaid care burden", "value": "unpaid_work_hours"},
                             {"label": "Gender wage gap", "value": "gender_wage_gap"},
+                            {"label": "Female labour participation", "value": "female_lfp"},
                             {"label": "Women in management", "value": "women_managers"},
                         ],
                         value="unpaid_work_hours",
@@ -329,7 +329,6 @@ def store_selection(selected):
 
 @app.callback(
     Output("mechanism", "figure"),
-    Output("profile", "figure"),
     Output("dist", "figure"),
     Input("xvar", "value"),
     Input("selected_iso3", "data")
@@ -344,9 +343,9 @@ def update_views(xvar, selected_iso3):
 
     return (
         fig_mechanism(d_sel, xvar),
-        fig_corr_heatmap(df, d_sel),
         fig_distribution(df, d_sel)
     )
+
 
 
 if __name__ == "__main__":
