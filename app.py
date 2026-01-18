@@ -166,20 +166,12 @@ def fig_mechanism(d: pd.DataFrame, xvar: str):
     return fig
 
 
-def fig_corr_heatmap(d: pd.DataFrame, title_suffix: str = ""):
+def fig_corr_heatmap(d: pd.DataFrame):
     cols = ["fertility_rate", "log_gdp", "female_lfp", "unpaid_work_hours", "gender_wage_gap", "women_managers"]
     dd = d[cols].apply(pd.to_numeric, errors="coerce").dropna()
 
-    # avoid nonsense correlations on tiny samples
-    if len(dd) < 6:
-        fig = go.Figure()
-        fig.update_layout(
-            title=f"Correlation structure{title_suffix} (not enough data after selection)",
-            margin=dict(l=60, r=20, t=60, b=40),
-            height=420,
-            autosize=False
-        )
-        return fig
+    if len(dd) < 5:
+        return go.Figure()
 
     corr = dd.corr(method="pearson").round(2)
 
@@ -191,6 +183,7 @@ def fig_corr_heatmap(d: pd.DataFrame, title_suffix: str = ""):
         "gender_wage_gap": "Wage gap",
         "women_managers": "Women managers"
     }
+
     corr = corr.rename(index=labels, columns=labels)
 
     fig = go.Figure(
@@ -204,8 +197,9 @@ def fig_corr_heatmap(d: pd.DataFrame, title_suffix: str = ""):
             hovertemplate="x=%{x}<br>y=%{y}<br>r=%{z:.2f}<extra></extra>"
         )
     )
+
     fig.update_layout(
-        title=f"Correlation structure{title_suffix} (2018)",
+        title="Correlation structure of fertility and autonomy indicators (2018)",
         margin=dict(l=60, r=20, t=60, b=40),
         height=420,
         autosize=False
@@ -295,7 +289,7 @@ app.layout = html.Div(
         html.Div(
             style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px", "marginTop": "10px"},
             children=[
-                dcc.Graph(id="profile", figure=fig_corr_heatmap(df, title_suffix=": all countries"),
+                dcc.Graph(id="profile", figure=fig_corr_heatmap(df),
     clear_on_unhover=True,
     style={"height": "420px"},config={"responsive": False}),
                 dcc.Graph(id="dist",figure=fig_distribution(df, df),
@@ -335,7 +329,7 @@ def store_selection(selected):
 
 @app.callback(
     Output("mechanism", "figure"),
-    Output("corr", "figure"),
+    Output("profile", "figure"),
     Output("dist", "figure"),
     Input("xvar", "value"),
     Input("selected_iso3", "data")
@@ -348,11 +342,9 @@ def update_views(xvar, selected_iso3):
     else:
         d_sel = df.copy()
 
-    suffix = f": selected (n={len(d_sel)})" if selected_iso3 else ": all countries"
-
     return (
         fig_mechanism(d_sel, xvar),
-        fig_corr_heatmap(d_sel, title_suffix=suffix),
+        fig_corr_heatmap(df, d_sel),
         fig_distribution(df, d_sel)
     )
 
