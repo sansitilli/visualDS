@@ -13,7 +13,13 @@ from sklearn.preprocessing import StandardScaler
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 df = pd.read_csv(os.path.join(BASE_DIR, "combined_dataset.csv"))
 
-
+def lock_height(fig, h=520):
+    fig.update_layout(
+        height=h,
+        autosize=False,
+        margin=dict(l=50, r=25, t=70, b=50)
+    )
+    return fig
 
 def classify_income(gdp):
     if pd.isna(gdp):
@@ -83,6 +89,7 @@ profile_cols = [
 
 
 
+
 def fig_bubble(d: pd.DataFrame):
     dd = d.dropna(subset=["fertility_rate", "log_gdp", "income_group"]).copy()
     dd["size"] = bubble_sizes(dd["unpaid_work_hours"])
@@ -116,7 +123,9 @@ def fig_bubble(d: pd.DataFrame):
         margin=dict(l=40, r=20, t=60, b=40),
         dragmode="lasso"
     )
+    fig = lock_height(fig, 560)
     return fig
+
 
 
 def fig_mechanism(d: pd.DataFrame, xvar: str):
@@ -148,41 +157,71 @@ def fig_mechanism(d: pd.DataFrame, xvar: str):
         legend_title="Income group",
         margin=dict(l=40, r=20, t=60, b=40)
     )
+    fig = lock_height(fig, 560)
+    dcc.Graph(id="mechanism", style={"height": "560px"})
+
     return fig
 
 
-def fig_profile_heatmap(d_all: pd.DataFrame, d_sel: pd.DataFrame):
-    all_num = d_all.dropna(subset=profile_cols).copy()
-    sel_num = d_sel.dropna(subset=profile_cols).copy()
+
+def fig_profile_radar(d_all: pd.DataFrame, d_sel: pd.DataFrame):
+    cols = profile_cols
+
+    all_num = d_all.dropna(subset=cols).copy()
+    sel_num = d_sel.dropna(subset=cols).copy()
 
     if len(all_num) < 3:
         return go.Figure()
 
-    scaler = StandardScaler().fit(all_num[profile_cols].values)
-    all_mean = scaler.transform(all_num[profile_cols].values).mean(axis=0)
+    scaler = StandardScaler().fit(all_num[cols].values)
+    all_mean = scaler.transform(all_num[cols].values).mean(axis=0)
 
     if len(sel_num) >= 2:
-        sel_mean = scaler.transform(sel_num[profile_cols].values).mean(axis=0)
+        sel_mean = scaler.transform(sel_num[cols].values).mean(axis=0)
     else:
-        sel_mean = np.full_like(all_mean, np.nan)
+        sel_mean = np.zeros_like(all_mean)
 
-    zmat = np.vstack([all_mean, sel_mean])
-    rows = ["All countries", "Selected countries"]
+    labels = [
+        "Female LFP",
+        "Unpaid care",
+        "Gender wage gap",
+        "Women managers",
+        "Economic development",
+        "Fertility"
+    ]
 
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=zmat,
-            x=["Female LFP", "Unpaid care", "Wage gap", "Women managers", "Log GDP", "Fertility"],
-            y=rows,
-            colorscale="RdBu",
-            zmid=0,
-            colorbar=dict(title="z-score")
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatterpolar(
+            r=all_mean,
+            theta=labels,
+            fill="toself",
+            name="All countries",
+            line=dict(color="#999999"),
+            fillcolor="rgba(150,150,150,0.25)"
         )
     )
-    fig.update_layout(
-        title="Profile heatmap (mean z-scores): Selected vs All",
-        margin=dict(l=40, r=20, t=60, b=40)
+
+    fig.add_trace(
+        go.Scatterpolar(
+            r=sel_mean,
+            theta=labels,
+            fill="toself",
+            name="Selected countries",
+            line=dict(color="#1f77b4", width=2),
+            fillcolor="rgba(31,119,180,0.35)"
+        )
     )
+
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[-2.5, 2.5])),
+        title="Autonomy profile: selected vs all countries (z-scores)",
+        margin=dict(l=40, r=40, t=60, b=40),
+        showlegend=True
+    )
+
+    fig = lock_height(fig, 560)
     return fig
 
 
@@ -219,7 +258,9 @@ def fig_distribution(d_all: pd.DataFrame, d_sel: pd.DataFrame):
             )
         )
 
+    fig = lock_height(fig, 560)
     return fig
+
 
 
 
@@ -235,7 +276,13 @@ app.layout = html.Div(
         html.Div(
             style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px"},
             children=[
-                dcc.Graph(id="bubble", figure=fig_bubble(df), clear_on_unhover=True),
+                dcc.Graph(
+                     id="bubble",
+                        figure=fig_bubble(df),
+                        clear_on_unhover=True,
+                        style={"height": "560px"},
+                        config={"responsive": False}
+                    ),
                 html.Div([
                     html.Div("Choose linked x-variable:", style={"marginBottom": "6px"}),
                     dcc.Dropdown(
@@ -249,7 +296,9 @@ app.layout = html.Div(
                         value="unpaid_work_hours",
                         clearable=False
                     ),
-                    dcc.Graph(id="mechanism")
+                    dcc.Graph(id="mechanism", figure=fig_mechanism(df, "unpaid_work_hours"),
+    clear_on_unhover=True,
+    style={"height": "560px"}, config={"responsive": False})
                 ])
             ]
         ),
@@ -257,8 +306,12 @@ app.layout = html.Div(
         html.Div(
             style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px", "marginTop": "10px"},
             children=[
-                dcc.Graph(id="profile"),
-                dcc.Graph(id="dist")
+                dcc.Graph(id="profile", figure=fig_profile_radar(df, df),
+    clear_on_unhover=True,
+    style={"height": "420px"},config={"responsive": False}),
+                dcc.Graph(id="dist",figure=fig_distribution(df, df),
+    clear_on_unhover=True,
+    style={"height": "560px"}, config={"responsive": False})
             ]
         ),
 
@@ -308,7 +361,7 @@ def update_views(xvar, selected_iso3):
 
     return (
         fig_mechanism(d_sel, xvar),
-        fig_profile_heatmap(df, d_sel),
+        fig_profile_radar(df, d_sel),
         fig_distribution(df, d_sel)
     )
 
