@@ -166,44 +166,53 @@ def fig_mechanism(d: pd.DataFrame, xvar: str):
     return fig
 
 
-def fig_corr_heatmap(d: pd.DataFrame):
-    cols = ["fertility_rate", "log_gdp", "female_lfp", "unpaid_work_hours", "gender_wage_gap", "women_managers"]
-    dd = d[cols].apply(pd.to_numeric, errors="coerce").dropna()
 
-    if len(dd) < 5:
+def fig_autonomy_bars(d_all: pd.DataFrame, d_sel: pd.DataFrame):
+    cols = profile_cols
+
+    all_num = d_all.dropna(subset=cols).copy()
+    sel_num = d_sel.dropna(subset=cols).copy()
+
+    if len(all_num) < 3 or len(sel_num) < 2:
         return go.Figure()
 
-    corr = dd.corr(method="pearson").round(2)
+    # standardise on ALL countries
+    scaler = StandardScaler().fit(all_num[cols].values)
+    all_z = scaler.transform(all_num[cols].values)
+    sel_z = scaler.transform(sel_num[cols].values)
 
-    labels = {
-        "fertility_rate": "Fertility",
-        "log_gdp": "Log GDP",
-        "female_lfp": "Female LFP",
-        "unpaid_work_hours": "Unpaid care",
-        "gender_wage_gap": "Wage gap",
-        "women_managers": "Women managers"
-    }
+    diff = sel_z.mean(axis=0) - all_z.mean(axis=0)
 
-    corr = corr.rename(index=labels, columns=labels)
+    labels = [
+        "Female labour participation",
+        "Unpaid care burden",
+        "Gender wage gap",
+        "Women in management",
+        "Economic development",
+        "Fertility"
+    ]
+
+    colors = ["#2ca02c" if v > 0 else "#1f77b4" for v in diff]
 
     fig = go.Figure(
-        data=go.Heatmap(
-            z=corr.values,
-            x=corr.columns,
-            y=corr.index,
-            zmin=-1, zmax=1,
-            colorscale="RdBu",
-            zmid=0,
-            hovertemplate="x=%{x}<br>y=%{y}<br>r=%{z:.2f}<extra></extra>"
+        go.Bar(
+            x=diff,
+            y=labels,
+            orientation="h",
+            marker_color=colors
         )
     )
 
     fig.update_layout(
-        title="Correlation structure of fertility and autonomy indicators (2018)",
-        margin=dict(l=60, r=20, t=60, b=40),
+        title="How selected countries differ from the global average (z-scores)",
+        xaxis_title="Difference from global mean (standard deviations)",
+        yaxis_title="",
+        xaxis=dict(zeroline=True, zerolinewidth=2),
+        margin=dict(l=60, r=30, t=60, b=40),
         height=420,
         autosize=False
     )
+
     return fig
 
 
@@ -257,13 +266,13 @@ app.layout = html.Div(
         html.H2("Fertility & Women’s Autonomy Dashboard (2018)"),
 
         html.Div(
-            style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px"},
+            style={"display": "grid", "gridTemplateColumns": "2fr 1fr", "gap": "14px"},
             children=[
                 dcc.Graph(
                      id="bubble",
                         figure=fig_bubble(df),
                         clear_on_unhover=True,
-                        style={"height": "560px"},
+                        style={"height": "560px", "gridColumn": "1 / span 2"},
                         config={"responsive": False}
                     ),
                 html.Div([
@@ -271,9 +280,9 @@ app.layout = html.Div(
                     dcc.Dropdown(
                         id="xvar",
                         options=[
+                            {"label": "Female labour participation", "value": "female_lfp"},
                             {"label": "Unpaid care burden", "value": "unpaid_work_hours"},
                             {"label": "Gender wage gap", "value": "gender_wage_gap"},
-                            {"label": "Female labour participation", "value": "female_lfp"},
                             {"label": "Women in management", "value": "women_managers"},
                         ],
                         value="unpaid_work_hours",
@@ -289,7 +298,7 @@ app.layout = html.Div(
         html.Div(
             style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px", "marginTop": "10px"},
             children=[
-                dcc.Graph(id="profile", figure=fig_corr_heatmap(df),
+                dcc.Graph(id="profile", figure=fig_autonomy_bars(df, df),
     clear_on_unhover=True,
     style={"height": "420px"},config={"responsive": False}),
                 dcc.Graph(id="dist",figure=fig_distribution(df, df),
@@ -329,6 +338,7 @@ def store_selection(selected):
 
 @app.callback(
     Output("mechanism", "figure"),
+    Output("profile", "figure"),
     Output("dist", "figure"),
     Input("xvar", "value"),
     Input("selected_iso3", "data")
@@ -343,9 +353,9 @@ def update_views(xvar, selected_iso3):
 
     return (
         fig_mechanism(d_sel, xvar),
+        fig_autonomy_bars(df, d_sel),
         fig_distribution(df, d_sel)
     )
-
 
 
 if __name__ == "__main__":
