@@ -166,53 +166,50 @@ def fig_mechanism(d: pd.DataFrame, xvar: str):
     return fig
 
 
+def fig_corr_heatmap(d: pd.DataFrame, title_suffix: str = ""):
+    cols = ["fertility_rate", "log_gdp", "female_lfp", "unpaid_work_hours", "gender_wage_gap", "women_managers"]
+    dd = d[cols].apply(pd.to_numeric, errors="coerce").dropna()
 
-def fig_autonomy_bars(d_all: pd.DataFrame, d_sel: pd.DataFrame):
-    cols = profile_cols
+    # avoid nonsense correlations on tiny samples
+    if len(dd) < 6:
+        fig = go.Figure()
+        fig.update_layout(
+            title=f"Correlation structure{title_suffix} (not enough data after selection)",
+            margin=dict(l=60, r=20, t=60, b=40),
+            height=420,
+            autosize=False
+        )
+        return fig
 
-    all_num = d_all.dropna(subset=cols).copy()
-    sel_num = d_sel.dropna(subset=cols).copy()
+    corr = dd.corr(method="pearson").round(2)
 
-    if len(all_num) < 3 or len(sel_num) < 2:
-        return go.Figure()
-
-    # standardise on ALL countries
-    scaler = StandardScaler().fit(all_num[cols].values)
-    all_z = scaler.transform(all_num[cols].values)
-    sel_z = scaler.transform(sel_num[cols].values)
-
-    diff = sel_z.mean(axis=0) - all_z.mean(axis=0)
-
-    labels = [
-        "Female labour participation",
-        "Unpaid care burden",
-        "Gender wage gap",
-        "Women in management",
-        "Economic development",
-        "Fertility"
-    ]
-
-    colors = ["#2ca02c" if v > 0 else "#1f77b4" for v in diff]
+    labels = {
+        "fertility_rate": "Fertility",
+        "log_gdp": "Log GDP",
+        "female_lfp": "Female LFP",
+        "unpaid_work_hours": "Unpaid care",
+        "gender_wage_gap": "Wage gap",
+        "women_managers": "Women managers"
+    }
+    corr = corr.rename(index=labels, columns=labels)
 
     fig = go.Figure(
-        go.Bar(
-            x=diff,
-            y=labels,
-            orientation="h",
-            marker_color=colors
+        data=go.Heatmap(
+            z=corr.values,
+            x=corr.columns,
+            y=corr.index,
+            zmin=-1, zmax=1,
+            colorscale="RdBu",
+            zmid=0,
+            hovertemplate="x=%{x}<br>y=%{y}<br>r=%{z:.2f}<extra></extra>"
         )
     )
-
     fig.update_layout(
-        title="How selected countries differ from the global average (z-scores)",
-        xaxis_title="Difference from global mean (standard deviations)",
-        yaxis_title="",
-        xaxis=dict(zeroline=True, zerolinewidth=2),
-        margin=dict(l=60, r=30, t=60, b=40),
+        title=f"Correlation structure{title_suffix} (2018)",
+        margin=dict(l=60, r=20, t=60, b=40),
         height=420,
         autosize=False
     )
-
     return fig
 
 
@@ -266,13 +263,13 @@ app.layout = html.Div(
         html.H2("Fertility & Women’s Autonomy Dashboard (2018)"),
 
         html.Div(
-            style={"display": "grid", "gridTemplateColumns": "2fr 1fr", "gap": "14px"},
+            style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px"},
             children=[
                 dcc.Graph(
                      id="bubble",
                         figure=fig_bubble(df),
                         clear_on_unhover=True,
-                        style={"height": "560px", "gridColumn": "1 / span 2"},
+                        style={"height": "560px"},
                         config={"responsive": False}
                     ),
                 html.Div([
@@ -298,7 +295,7 @@ app.layout = html.Div(
         html.Div(
             style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px", "marginTop": "10px"},
             children=[
-                dcc.Graph(id="profile", figure=fig_autonomy_bars(df, df),
+                dcc.Graph(id="profile", figure=fig_corr_heatmap(df, title_suffix=": all countries"),
     clear_on_unhover=True,
     style={"height": "420px"},config={"responsive": False}),
                 dcc.Graph(id="dist",figure=fig_distribution(df, df),
@@ -338,7 +335,7 @@ def store_selection(selected):
 
 @app.callback(
     Output("mechanism", "figure"),
-    Output("profile", "figure"),
+    Output("corr", "figure"),
     Output("dist", "figure"),
     Input("xvar", "value"),
     Input("selected_iso3", "data")
@@ -351,9 +348,11 @@ def update_views(xvar, selected_iso3):
     else:
         d_sel = df.copy()
 
+    suffix = f": selected (n={len(d_sel)})" if selected_iso3 else ": all countries"
+
     return (
         fig_mechanism(d_sel, xvar),
-        fig_autonomy_bars(df, d_sel),
+        fig_corr_heatmap(d_sel, title_suffix=suffix),
         fig_distribution(df, d_sel)
     )
 
