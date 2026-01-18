@@ -167,65 +167,54 @@ def fig_mechanism(d: pd.DataFrame, xvar: str):
 
 
 
-def fig_profile_radar(d_all: pd.DataFrame, d_sel: pd.DataFrame):
+def fig_autonomy_bars(d_all: pd.DataFrame, d_sel: pd.DataFrame):
     cols = profile_cols
 
     all_num = d_all.dropna(subset=cols).copy()
     sel_num = d_sel.dropna(subset=cols).copy()
 
-    if len(all_num) < 3:
+    if len(all_num) < 3 or len(sel_num) < 2:
         return go.Figure()
 
+    # standardise on ALL countries
     scaler = StandardScaler().fit(all_num[cols].values)
-    all_mean = scaler.transform(all_num[cols].values).mean(axis=0)
+    all_z = scaler.transform(all_num[cols].values)
+    sel_z = scaler.transform(sel_num[cols].values)
 
-    if len(sel_num) >= 2:
-        sel_mean = scaler.transform(sel_num[cols].values).mean(axis=0)
-    else:
-        sel_mean = np.zeros_like(all_mean)
+    diff = sel_z.mean(axis=0) - all_z.mean(axis=0)
 
     labels = [
-        "Female LFP",
-        "Unpaid care",
+        "Female labour participation",
+        "Unpaid care burden",
         "Gender wage gap",
-        "Women managers",
+        "Women in management",
         "Economic development",
         "Fertility"
     ]
 
-    fig = go.Figure()
+    colors = ["#2ca02c" if v > 0 else "#1f77b4" for v in diff]
 
-    fig.add_trace(
-        go.Scatterpolar(
-            r=all_mean,
-            theta=labels,
-            fill="toself",
-            name="All countries",
-            line=dict(color="#999999"),
-            fillcolor="rgba(150,150,150,0.25)"
-        )
-    )
-
-    fig.add_trace(
-        go.Scatterpolar(
-            r=sel_mean,
-            theta=labels,
-            fill="toself",
-            name="Selected countries",
-            line=dict(color="#1f77b4", width=2),
-            fillcolor="rgba(31,119,180,0.35)"
+    fig = go.Figure(
+        go.Bar(
+            x=diff,
+            y=labels,
+            orientation="h",
+            marker_color=colors
         )
     )
 
     fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[-2.5, 2.5])),
-        title="Autonomy profile: selected vs all countries (z-scores)",
-        margin=dict(l=40, r=40, t=60, b=40),
-        showlegend=True
+        title="How selected countries differ from the global average (z-scores)",
+        xaxis_title="Difference from global mean (standard deviations)",
+        yaxis_title="",
+        xaxis=dict(zeroline=True, zerolinewidth=2),
+        margin=dict(l=60, r=30, t=60, b=40),
+        height=420,
+        autosize=False
     )
 
-    fig = lock_height(fig, 560)
     return fig
+
 
 
 def fig_distribution(d_all: pd.DataFrame, d_sel: pd.DataFrame):
@@ -277,13 +266,13 @@ app.layout = html.Div(
         html.H2("Fertility & Women’s Autonomy Dashboard (2018)"),
 
         html.Div(
-            style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px"},
+            style={"display": "grid", "gridTemplateColumns": "2fr 1fr", "gap": "14px"},
             children=[
                 dcc.Graph(
                      id="bubble",
                         figure=fig_bubble(df),
                         clear_on_unhover=True,
-                        style={"height": "560px"},
+                        style={"height": "560px", "gridColumn": "1 / span 2"},
                         config={"responsive": False}
                     ),
                 html.Div([
@@ -291,9 +280,9 @@ app.layout = html.Div(
                     dcc.Dropdown(
                         id="xvar",
                         options=[
+                            {"label": "Female labour participation", "value": "female_lfp"},
                             {"label": "Unpaid care burden", "value": "unpaid_work_hours"},
                             {"label": "Gender wage gap", "value": "gender_wage_gap"},
-                            {"label": "Female labour participation", "value": "female_lfp"},
                             {"label": "Women in management", "value": "women_managers"},
                         ],
                         value="unpaid_work_hours",
@@ -309,7 +298,7 @@ app.layout = html.Div(
         html.Div(
             style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px", "marginTop": "10px"},
             children=[
-                dcc.Graph(id="profile", figure=fig_profile_radar(df, df),
+                dcc.Graph(id="profile", figure=fig_autonomy_bars(df, df),
     clear_on_unhover=True,
     style={"height": "420px"},config={"responsive": False}),
                 dcc.Graph(id="dist",figure=fig_distribution(df, df),
@@ -364,7 +353,7 @@ def update_views(xvar, selected_iso3):
 
     return (
         fig_mechanism(d_sel, xvar),
-        fig_profile_radar(df, d_sel),
+        fig_autonomy_bars(df, d_sel),
         fig_distribution(df, d_sel)
     )
 
