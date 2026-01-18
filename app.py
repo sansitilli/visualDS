@@ -331,12 +331,7 @@ app.layout = html.Div(
             ]
         ),
 
-        dcc.Store(id="selected_iso3", data=[]),
-
-        html.Div(
-            style={"marginTop": "6px", "fontSize": "13px", "opacity": 0.85},
-            children="Tip: use lasso/box select on the bubble chart; selection updates the other three views. Double-click to reset."
-        )
+        dcc.Store(id="selected_iso3", data=[])
     ]
 )
 
