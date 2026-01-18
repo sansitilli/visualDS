@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for visualds-weathered-field-2210 on 2026-01-17T13:25:05+01:00
+# fly.toml app configuration file generated for visualds-nameless-water-6622 on 2026-01-18T21:29:55+01:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'visualds-weathered-field-2210'
+app = 'visualds-nameless-water-6622'
 primary_region = 'fra'
 
 [build]

@@ -16,8 +16,7 @@ df = pd.read_csv(os.path.join(BASE_DIR, "combined_dataset.csv"))
 def lock_height(fig, h=520):
     fig.update_layout(
         height=h,
-        autosize=False,
-        margin=dict(l=50, r=25, t=70, b=50)
+        autosize=False
     )
     return fig
 
@@ -99,6 +98,7 @@ def fig_bubble(d: pd.DataFrame):
         x="log_gdp",
         y="fertility_rate",
         color="income_group",
+        category_orders={"income_group": order}, 
         color_discrete_map=income_palette,
         size="size",
         size_max=60,
@@ -121,7 +121,8 @@ def fig_bubble(d: pd.DataFrame):
         yaxis_title="Fertility rate (births per woman)",
         legend_title="Income group",
         margin=dict(l=40, r=20, t=60, b=40),
-        dragmode="lasso"
+        dragmode="lasso",
+        legend_traceorder="normal"
     )
     fig = lock_height(fig, 560)
     return fig
@@ -136,6 +137,7 @@ def fig_mechanism(d: pd.DataFrame, xvar: str):
         x=xvar,
         y="fertility_rate",
         color="income_group",
+        category_orders={"income_group": order}, 
         color_discrete_map=income_palette,
         hover_name="country_name",
         hover_data={"iso3": True}
@@ -155,7 +157,8 @@ def fig_mechanism(d: pd.DataFrame, xvar: str):
         xaxis_title=nice.get(xvar, xvar),
         yaxis_title="Fertility rate (births per woman)",
         legend_title="Income group",
-        margin=dict(l=40, r=20, t=60, b=40)
+        margin=dict(l=40, r=20, t=60, b=40),
+        legend_traceorder="normal"
     )
     fig = lock_height(fig, 560)
     dcc.Graph(id="mechanism", style={"height": "560px"})
